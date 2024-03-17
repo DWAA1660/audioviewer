@@ -1,5 +1,7 @@
-from flask import Flask, render_template, send_file, request, Response
+from flask import Flask, render_template, request, Response
 import os
+import flask
+from pathlib import Path
 
 app = Flask(__name__)
 
@@ -10,7 +12,7 @@ def index():
 
 @app.route("/file/<file>")
 def file(file):
-    return send_file(f"static/sources/{file}")
+    return flask.send_from_directory((p := Path(f"static/sources/{file}")).parent, p.name)
 
 @app.route("/checkfile/<file>")
 def file(file):
