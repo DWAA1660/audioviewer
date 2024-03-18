@@ -13,7 +13,7 @@ def file(file):
     return send_file(f"static/sources/{file}")
 
 @app.route("/checkfile/<file>")
-def file(file):
+def checkfile(file):
     exists = os.path.exists(f"static/sources/{file}")
     if exists:
         return Response(status=200)
