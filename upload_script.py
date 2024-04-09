@@ -9,7 +9,7 @@ UPLOAD_URL = "http://localhost:5000/upload"  # Change this to your server addres
 
 def upload_file(filename):
     files = {'file': open(os.path.join(DIRECTORY_TO_MONITOR, filename), 'rb')}
-    response = requests.post(UPLOAD_URL, files=files)
+    response = requests.post(UPLOAD_URL, files=files, timeout=60)
     if response.status_code == 200:
         print(f"File '{filename}' uploaded successfully.")
     else:
@@ -22,7 +22,7 @@ def check_and_upload_files():
     
     for filename in files:
         # Check if file is already uploaded
-        response = requests.get(f"http://localhost:5000/checkfile/{filename}")
+        response = requests.get(f"http://localhost:5000/checkfile/{filename}", timeout=60)
         if response.status_code == 201:
             print(f"File '{filename}' not uploaded. Uploading now...")
             upload_file(filename)
