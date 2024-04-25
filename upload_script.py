@@ -1,6 +1,7 @@
 import os
 import time
 import requests
+from security import safe_requests
 
 # Define the directory to monitor
 DIRECTORY_TO_MONITOR = "static/sources"
@@ -22,7 +23,7 @@ def check_and_upload_files():
     
     for filename in files:
         # Check if file is already uploaded
-        response = requests.get(f"http://localhost:5000/checkfile/{filename}")
+        response = safe_requests.get(f"http://localhost:5000/checkfile/{filename}")
         if response.status_code == 201:
             print(f"File '{filename}' not uploaded. Uploading now...")
             upload_file(filename)
