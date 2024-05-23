@@ -3,29 +3,75 @@ import os
 
 app = Flask(__name__)
 
+@app.route("/path")
+def path():
+    pathurl = request.args.get("path")
+    files = []
+    folders = []
+    items = os.listdir(f"{pathurl}")
+    for item in items:
+        fullitem = os.path.join(f"{pathurl}", item)
+        if os.path.isfile(fullitem):
+            files.append(fullitem)
+        else:
+            folders.append(fullitem)
+    print(folders,files)
+    prefix_length = len("static/sources") + 1
+    return render_template("index.html", files=files, folders=folders, prefix_length=prefix_length)
+
 @app.route("/")
 def index():
-    files = os.listdir("static/sources")
-    return render_template("index.html", files=files)
+    
+    files = []
+    folders = []
+    items = os.listdir(f"static/sources")
+    for item in items:
+        fullitem = os.path.join("static/sources", item)
+        if os.path.isfile(fullitem):
+            files.append(fullitem)
+        else:
+            folders.append(fullitem)
+    print(folders,files)
+    prefix_length = len("static/sources") + 1
+    return render_template("index.html", files=files, folders=folders, prefix_length=prefix_length)
 
-@app.route("/file/<file>")
-def file(file):
-    return send_file(f"static/sources/{file}")
+@app.route("/file/")
+def file():
+    name = request.args.get('file')
+    return send_file(f"{name}")
 
-@app.route("/checkfile/<file>")
-def checkfile(file):
-    exists = os.path.exists(f"static/sources/{file}")
+@app.route("/checkfile/")
+def checkfile():
+    name = request.args.get('name')
+    exists = os.path.exists(f"static/sources/{name}")
     if exists:
-        return Response(status=200)
-    else:
         return Response(status=201)
+    else:
+        return Response(status=202)
     
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if request.method == 'POST':
+        name = request.form.get('name')
+        last_slash_index = name.rfind('/')
+        if last_slash_index != -1:
+            result = name[:last_slash_index]
+        else:
+            result = name
+
+
         file = request.files['file']
+        print(result, 0.5)
+        if not os.path.exists('static/sources/' + result) and ".mp3" not in result:
+            print(1)
+            os.makedirs('static/sources/' + result)
         if file:
-            file.save('uploads/' + file.filename)
+            if not ".mp3" in result:
+                print(2)
+                file.save('static/sources/' + result +"/" + file.filename)
+            else:
+                print(3)
+                file.save('static/sources/' + file.filename)
             return 'File uploaded successfully'
     return 'No file selected'
 

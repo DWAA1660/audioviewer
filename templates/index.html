@@ -9,12 +9,21 @@
 
     <input type="text" id="searchInput" placeholder="Search for audio files">
 
+
+    <ul id="folder">
+        {% for folder in folders %}
+            <li class="audio-file">
+                <a href="{{url_for('path', path=folder)}}">📁{{folder[prefix_length:]}}</a>
+                </li>
+        {% endfor %}
+    </ul>
+
     <ul id="fileList">
         {% for file in files %}
             <li class="audio-file">
-                <h3>{{ file|replace("_", " ") }}</h3>
-                <audio src="static/sources/{{file}}}" controls></audio>
-                <a href="/static/sources/{{file}}" download>Download</a>
+                <h3>{{ file[prefix_length:]|replace("_", " ") }}</h3>
+                <audio src="{{file}}" controls></audio>
+                <a href="{{file}}" download>Download</a>
                 <button class="copy-link" data-src="http://127.0.0.1:5000{{url_for('file', file=file)}}">Copy Link</button>
             </li>
         {% endfor %}
