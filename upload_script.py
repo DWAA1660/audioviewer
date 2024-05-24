@@ -1,11 +1,9 @@
 import os
 import time
 import requests
-
+from config import DIRECTORY, UPLOAD_URL
 # Define the directory to monitor
 
-UPLOAD_URL = "http://localhost:5000/upload"  # Change this to your server address
-DIRECTORY = "/home/david/Desktop/songs"
 
 def upload_file(fullname, filename):
     files = {'file': open(os.path.join(os.path.join(DIRECTORY), fullname), 'rb')}
@@ -25,7 +23,9 @@ def check_and_upload_files():
         for file in files:   
             # Check if file is already uploaded
             full_name = os.path.join(root, file)[prefix_length:]
-            response = requests.get(f"http://localhost:5000/checkfile/?name={full_name}")
+            size = os.stat(f"{DIRECTORY}/{full_name}")
+            
+            response = requests.get(f"http://localhost:5000/checkfile/?name={full_name}&size={size.st_size}")
             if response.status_code == 202:
                 print(f"File '{file}' not uploaded. Uploading now...")
                 upload_file(full_name, file)

@@ -43,10 +43,15 @@ def file():
 @app.route("/checkfile/")
 def checkfile():
     name = request.args.get('name')
+    size = request.args.get('size') # size of file in bytes
+    
     exists = os.path.exists(f"static/sources/{name}")
-    if exists:
+    
+    if exists and os.stat(f"static/sources/{name}").st_size == int(size):
+        #file exists and is same size
         return Response(status=201)
     else:
+        #file does not exist or is different size
         return Response(status=202)
     
 @app.route('/upload', methods=['POST'])
