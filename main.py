@@ -1,7 +1,12 @@
 from flask import Flask, render_template, send_file, request, Response
 import os
+from dotenv import load_dotenv
 
+load_dotenv()
+KEY = os.getenv("KEY")
+print(KEY, 1)
 app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB limit
 
 @app.route("/path")
 def path():
@@ -57,6 +62,9 @@ def checkfile():
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if request.method == 'POST':
+        if request.headers['key'] != KEY:
+            print("bad guy")
+            return Response(status=401)
         name = request.form.get('name')
         last_slash_index = name.rfind('/')
         if last_slash_index != -1:
