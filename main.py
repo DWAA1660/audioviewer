@@ -29,7 +29,7 @@ def index():
     
     files = []
     folders = []
-    items = os.listdir(f"static/sources")
+    items = os.listdir("static/sources")
     for item in items:
         fullitem = os.path.join("static/sources", item)
         if os.path.isfile(fullitem):
