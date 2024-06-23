@@ -1,6 +1,8 @@
-from flask import Flask, render_template, send_file, request, Response
+from flask import Flask, render_template, request, Response
 import os
 from dotenv import load_dotenv
+import flask
+from pathlib import Path
 
 load_dotenv()
 KEY = os.getenv("KEY")
@@ -43,7 +45,7 @@ def index():
 @app.route("/file/")
 def file():
     name = request.args.get('file')
-    return send_file(f"{name}")
+    return flask.send_from_directory((p := Path(f"{name}")).parent, p.name)
 
 @app.route("/checkfile/")
 def checkfile():
