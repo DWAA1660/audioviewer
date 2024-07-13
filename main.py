@@ -66,6 +66,7 @@ def upload_file():
             print("bad guy")
             return Response(status=401)
         name = request.form.get('name')
+        name.replace("\\", "/")
         last_slash_index = name.rfind('/')
         if last_slash_index != -1:
             result = name[:last_slash_index]
