@@ -24,7 +24,7 @@
                 <h3>{{ file[prefix_length:]|replace("_", " ") }}</h3>
                 <audio src="{{file}}" controls></audio>
                 <a href="{{file}}" download>Download</a>
-                <button class="copy-link" data-src="http://127.0.0.1:5000{{url_for('file', file=file)}}">Copy Link</button>
+                <button class="copy-link" data-src="https://audio.kofg.org{{url_for('file', file=file)}}">Copy Link</button>
             </li>
         {% endfor %}
     </ul>
