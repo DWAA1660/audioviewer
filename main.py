@@ -43,11 +43,13 @@ def index():
 @app.route("/file/")
 def file():
     name = request.args.get('file')
+    name = name.replace
     return send_file(f"{name}")
 
 @app.route("/checkfile/")
 def checkfile():
     name = request.args.get('name')
+    name = name.replace("\\", "/")
     size = request.args.get('size') # size of file in bytes
     
     exists = os.path.exists(f"static/sources/{name}")
@@ -66,7 +68,7 @@ def upload_file():
             print("bad guy")
             return Response(status=401)
         name = request.form.get('name')
-        name.replace("\\", "/")
+        name = name.replace("\\", "/")
         last_slash_index = name.rfind('/')
         if last_slash_index != -1:
             result = name[:last_slash_index]
