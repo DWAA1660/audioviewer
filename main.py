@@ -78,11 +78,11 @@ def upload_file():
 
         file = request.files['file']
         print(result, 0.5)
-        if not os.path.exists('static/sources/' + result) and ".mp3" not in result:
+        if not os.path.exists('static/sources/' + result) and ".mp3" not in result and "mp2" not in result:
             print(1)
             os.makedirs('static/sources/' + result)
         if file:
-            if not ".mp3" in result:
+            if not ".mp3" in result and ".mp2" not in result:
                 print(2)
                 file.save('static/sources/' + result +"/" + file.filename)
             else:
