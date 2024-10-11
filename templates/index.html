@@ -7,14 +7,13 @@
 </head>
 <body>
 
-    <input type="text" id="searchInput" placeholder="Search for audio files">
-
+    <input type="text" id="searchInput" placeholder="Search for folders or audio files">
 
     <ul id="folder">
         {% for folder in folders %}
-            <li class="audio-file">
+            <li class="folder-item">
                 <a href="{{url_for('path', path=folder)}}">📁{{folder[prefix_length:]}}</a>
-                </li>
+            </li>
         {% endfor %}
     </ul>
 
@@ -31,19 +30,36 @@
 
     <script>
         document.getElementById("searchInput").addEventListener("input", function() {
-            var input, filter, ul, li, h3, i, txtValue;
+            var input, filter, folderList, fileList, folderItems, fileItems, h3, a, i, txtValue;
+
             input = document.getElementById("searchInput");
             filter = input.value.toUpperCase();
-            ul = document.getElementById("fileList");
-            li = ul.getElementsByClassName("audio-file");
+            
+            // Search in folders
+            folderList = document.getElementById("folder");
+            folderItems = folderList.getElementsByClassName("folder-item");
+            
+            for (i = 0; i < folderItems.length; i++) {
+                a = folderItems[i].getElementsByTagName("a")[0];
+                txtValue = a.textContent || a.innerText;
+                if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                    folderItems[i].style.display = "";
+                } else {
+                    folderItems[i].style.display = "none";
+                }
+            }
 
-            for (i = 0; i < li.length; i++) {
-                h3 = li[i].getElementsByTagName("h3")[0];
+            // Search in audio files
+            fileList = document.getElementById("fileList");
+            fileItems = fileList.getElementsByClassName("audio-file");
+
+            for (i = 0; i < fileItems.length; i++) {
+                h3 = fileItems[i].getElementsByTagName("h3")[0];
                 txtValue = h3.textContent || h3.innerText;
                 if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                    li[i].style.display = "";
+                    fileItems[i].style.display = "";
                 } else {
-                    li[i].style.display = "none";
+                    fileItems[i].style.display = "none";
                 }
             }
         });
