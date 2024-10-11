@@ -83,7 +83,6 @@
             padding: 10px;
         }
 
-        /* Hover effect for audio-file and folder-item */
         .audio-file:hover, .folder-item:hover {
             transform: scale(1.02);
             transition: 0.3s ease;
@@ -106,7 +105,8 @@
         {% for file in files %}
             <li class="audio-file">
                 <h3>{{ file[prefix_length:]|replace("_", " ") }}</h3>
-                <audio src="{{file}}" controls></audio>
+                <!-- Lazy load the audio by using data-src attribute -->
+                <audio data-src="{{file}}" controls></audio>
                 <a href="{{file}}" download class="download">Download</a>
                 <button class="copy-link" data-src="https://audio.kofg.org{{url_for('file', file=file)}}">Copy Link</button>
             </li>
@@ -114,16 +114,17 @@
     </ul>
 
     <script>
+        // Search functionality
         document.getElementById("searchInput").addEventListener("input", function() {
             var input, filter, folderList, fileList, folderItems, fileItems, h3, a, i, txtValue;
 
             input = document.getElementById("searchInput");
             filter = input.value.toUpperCase();
-            
+
             // Search in folders
             folderList = document.getElementById("folder");
             folderItems = folderList.getElementsByClassName("folder-item");
-            
+
             for (i = 0; i < folderItems.length; i++) {
                 a = folderItems[i].getElementsByTagName("a")[0];
                 txtValue = a.textContent || a.innerText;
@@ -149,6 +150,30 @@
             }
         });
 
+        // Lazy loading for audio elements
+        document.addEventListener("DOMContentLoaded", function() {
+            var audioElements = document.querySelectorAll('audio[data-src]');
+
+            // Create an IntersectionObserver instance
+            var observer = new IntersectionObserver(function(entries, observer) {
+                entries.forEach(function(entry) {
+                    // If the element is in the viewport, load the audio
+                    if (entry.isIntersecting) {
+                        var audio = entry.target;
+                        audio.src = audio.getAttribute('data-src'); // Set the real src
+                        audio.removeAttribute('data-src'); // Remove data-src attribute
+                        observer.unobserve(audio); // Stop observing once it's loaded
+                    }
+                });
+            });
+
+            // Observe each audio element
+            audioElements.forEach(function(audio) {
+                observer.observe(audio);
+            });
+        });
+
+        // Copy link functionality
         var copyButtons = document.querySelectorAll('.copy-link');
         copyButtons.forEach(function(button) {
             button.addEventListener('click', function() {
