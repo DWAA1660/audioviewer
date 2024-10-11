@@ -4,6 +4,91 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Audio Files</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        h3 {
+            margin: 10px 0;
+            font-size: 1.2rem;
+            color: #444;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .audio-file, .folder-item {
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .audio-file h3, .folder-item a {
+            font-size: 1rem;
+            font-weight: 500;
+            color: #2a75c0;
+            text-decoration: none;
+        }
+
+        .audio-file h3:hover, .folder-item a:hover {
+            text-decoration: underline;
+        }
+
+        .audio-file audio {
+            display: block;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .copy-link, a.download {
+            background-color: #2a75c0;
+            color: white;
+            padding: 8px 15px;
+            margin-top: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9rem;
+            display: inline-block;
+        }
+
+        .copy-link:hover, a.download:hover {
+            background-color: #1f5a93;
+        }
+
+        .folder-item a {
+            font-size: 1rem;
+            font-weight: 600;
+            display: block;
+            padding: 10px;
+        }
+
+        /* Hover effect for audio-file and folder-item */
+        .audio-file:hover, .folder-item:hover {
+            transform: scale(1.02);
+            transition: 0.3s ease;
+        }
+    </style>
 </head>
 <body>
 
@@ -12,7 +97,7 @@
     <ul id="folder">
         {% for folder in folders %}
             <li class="folder-item">
-                <a href="{{url_for('path', path=folder)}}">📁{{folder[prefix_length:]}}</a>
+                <a href="{{url_for('path', path=folder)}}">📁 {{folder[prefix_length:]}}</a>
             </li>
         {% endfor %}
     </ul>
@@ -22,7 +107,7 @@
             <li class="audio-file">
                 <h3>{{ file[prefix_length:]|replace("_", " ") }}</h3>
                 <audio src="{{file}}" controls></audio>
-                <a href="{{file}}" download>Download</a>
+                <a href="{{file}}" download class="download">Download</a>
                 <button class="copy-link" data-src="https://audio.kofg.org{{url_for('file', file=file)}}">Copy Link</button>
             </li>
         {% endfor %}
