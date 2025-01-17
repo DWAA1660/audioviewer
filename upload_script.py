@@ -11,7 +11,7 @@ print(KEY, 2)
 def upload_file(fullname, filename):
     files = {'file': open(os.path.join(os.path.join(DIRECTORY), fullname), 'rb')}
     print(fullname)
-    response = requests.post(f"{URL}/upload", files=files, data={"name": fullname}, headers={"key": KEY})
+    response = requests.post(f"{URL}/upload", files=files, data={"name": fullname}, headers={"key": KEY}, timeout=60)
     if response.status_code == 200:
         print(f"File '{filename}' uploaded successfully.")
     else:
@@ -27,7 +27,7 @@ def check_and_upload_files():
             # Check if file is already uploaded
             full_name = os.path.join(root, file)[prefix_length:]
             size = os.stat(f"{DIRECTORY}/{full_name}")
-            response = requests.get(f"{URL}/checkfile/?name={full_name}&size={size.st_size}")
+            response = requests.get(f"{URL}/checkfile/?name={full_name}&size={size.st_size}", timeout=60)
             if response.status_code == 202:
                 print(f"File '{file}' not uploaded. Uploading now...")
                 upload_file(full_name, file)
