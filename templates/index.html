@@ -143,8 +143,8 @@
                 <li class="audio-file">
                     <h3>{{ file[prefix_length:]|replace("_", " ") }}</h3>
                     <!-- Lazy load the audio by using data-src attribute -->
-                    <audio data-src="{{file}}" controls></audio>
-                    <a href="{{file}}" download class="download">Download</a>
+                    <audio data-src="{{url_for('file', file=file)}}" controls></audio>
+                    <a href="{{url_for('file', file=file)}}" download class="download">Download</a>
                     <button class="copy-link" data-src="https://audio.kofg.org{{url_for('file', file=file)}}">Copy Link</button>
                 </li>
             {% endfor %}
@@ -308,8 +308,8 @@
                         fileList.innerHTML += `
                             <li class="audio-file">
                                 <h3>${fileName}</h3>
-                                <audio data-src="${file}" controls></audio>
-                                <a href="${file}" download class="download">Download</a>
+                                <audio data-src="/file/?file=${encodeURIComponent(file)}" controls></audio>
+                                <a href="/file/?file=${encodeURIComponent(file)}" download class="download">Download</a>
                                 <button class="copy-link" data-src="https://audio.kofg.org/file/?file=${encodeURIComponent(file)}">Copy Link</button>
                             </li>
                         `;
