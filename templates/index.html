@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Audio Files</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -87,33 +88,93 @@
             transform: scale(1.02);
             transition: 0.3s ease;
         }
+        
+        /* Pagination styles */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+            gap: 10px;
+        }
+        
+        .pagination-btn {
+            padding: 8px 15px;
+            background-color: #2a75c0;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .pagination-btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .page-info {
+            display: flex;
+            align-items: center;
+            color: #666;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.2rem;
+            color: #666;
+        }
     </style>
 </head>
 <body>
 
     <input type="text" id="searchInput" placeholder="Search for folders or audio files">
 
-    <ul id="folder">
-        {% for folder in folders %}
-            <li class="folder-item">
-                <a href="{{url_for('path', path=folder)}}">📁 {{folder[prefix_length:]}}</a>
-            </li>
-        {% endfor %}
-    </ul>
+    <div id="content-container">
+        <ul id="folder">
+            {% for folder in folders %}
+                <li class="folder-item">
+                    <a href="{{url_for('path', path=folder)}}">📁 {{folder[prefix_length:]}}</a>
+                </li>
+            {% endfor %}
+        </ul>
 
-    <ul id="fileList">
-        {% for file in files %}
-            <li class="audio-file">
-                <h3>{{ file[prefix_length:]|replace("_", " ") }}</h3>
-                <!-- Lazy load the audio by using data-src attribute -->
-                <audio data-src="{{file}}" controls></audio>
-                <a href="{{file}}" download class="download">Download</a>
-                <button class="copy-link" data-src="https://audio.kofg.org{{url_for('file', file=file)}}">Copy Link</button>
-            </li>
-        {% endfor %}
-    </ul>
+        <ul id="fileList">
+            {% for file in files %}
+                <li class="audio-file">
+                    <h3>{{ file[prefix_length:]|replace("_", " ") }}</h3>
+                    <!-- Lazy load the audio by using data-src attribute -->
+                    <audio data-src="{{file}}" controls></audio>
+                    <a href="{{file}}" download class="download">Download</a>
+                    <button class="copy-link" data-src="https://audio.kofg.org{{url_for('file', file=file)}}">Copy Link</button>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+    
+    <!-- Pagination controls -->
+    <div class="pagination">
+        <button id="prev-page" class="pagination-btn" {% if current_page == 1 %}disabled{% endif %}>
+            <i class="fas fa-chevron-left"></i> Previous
+        </button>
+        <div class="page-info">
+            Page <span id="current-page">{{ current_page }}</span> of <span id="total-pages">{{ total_pages }}</span>
+            ({{ total_items }} items)
+        </div>
+        <button id="next-page" class="pagination-btn" {% if current_page == total_pages %}disabled{% endif %}>
+            Next <i class="fas fa-chevron-right"></i>
+        </button>
+    </div>
+    
+    <div id="loading" class="loading" style="display: none;">
+        <i class="fas fa-spinner fa-spin"></i> Loading...
+    </div>
 
     <script>
+        // Global variables
+        const currentPath = "{{ path }}";
+        let currentPage = {{ current_page }};
+        const totalPages = {{ total_pages }};
+        
         // Search functionality
         document.getElementById("searchInput").addEventListener("input", function() {
             var input, filter, folderList, fileList, folderItems, fileItems, h3, a, i, txtValue;
@@ -191,6 +252,132 @@
             document.execCommand('copy');
             document.body.removeChild(tempInput);
         }
+        
+        // Pagination functionality
+        document.getElementById('prev-page').addEventListener('click', function() {
+            if (currentPage > 1) {
+                navigateToPage(currentPage - 1);
+            }
+        });
+        
+        document.getElementById('next-page').addEventListener('click', function() {
+            if (currentPage < totalPages) {
+                navigateToPage(currentPage + 1);
+            }
+        });
+        
+        function navigateToPage(page) {
+            // Show loading indicator
+            document.getElementById('loading').style.display = 'block';
+            
+            // Disable pagination buttons during loading
+            document.getElementById('prev-page').disabled = true;
+            document.getElementById('next-page').disabled = true;
+            
+            // Use AJAX to fetch the next page of content
+            fetch(`/api/directory_contents?path=${encodeURIComponent(currentPath)}&page=${page}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                        return;
+                    }
+                    
+                    // Update page information
+                    currentPage = data.current_page;
+                    document.getElementById('current-page').textContent = currentPage;
+                    document.getElementById('total-pages').textContent = data.total_pages;
+                    
+                    // Update folder list
+                    const folderList = document.getElementById('folder');
+                    folderList.innerHTML = '';
+                    data.folders.forEach(folder => {
+                        const folderName = folder.substring(folder.lastIndexOf('/') + 1);
+                        folderList.innerHTML += `
+                            <li class="folder-item">
+                                <a href="/path?path=${encodeURIComponent(folder)}">📁 ${folderName}</a>
+                            </li>
+                        `;
+                    });
+                    
+                    // Update file list
+                    const fileList = document.getElementById('fileList');
+                    fileList.innerHTML = '';
+                    data.files.forEach(file => {
+                        const fileName = file.substring(file.lastIndexOf('/') + 1).replace(/_/g, ' ');
+                        fileList.innerHTML += `
+                            <li class="audio-file">
+                                <h3>${fileName}</h3>
+                                <audio data-src="${file}" controls></audio>
+                                <a href="${file}" download class="download">Download</a>
+                                <button class="copy-link" data-src="https://audio.kofg.org/file/?file=${encodeURIComponent(file)}">Copy Link</button>
+                            </li>
+                        `;
+                    });
+                    
+                    // Re-initialize lazy loading for new audio elements
+                    initializeLazyLoading();
+                    
+                    // Re-initialize copy buttons
+                    initializeCopyButtons();
+                    
+                    // Update pagination buttons
+                    document.getElementById('prev-page').disabled = currentPage <= 1;
+                    document.getElementById('next-page').disabled = currentPage >= data.total_pages;
+                    
+                    // Hide loading indicator
+                    document.getElementById('loading').style.display = 'none';
+                    
+                    // Scroll to top of content
+                    window.scrollTo(0, document.getElementById('content-container').offsetTop);
+                })
+                .catch(error => {
+                    console.error('Error fetching page data:', error);
+                    alert('Failed to load page data. Please try again.');
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('prev-page').disabled = currentPage <= 1;
+                    document.getElementById('next-page').disabled = currentPage >= totalPages;
+                });
+        }
+        
+        function initializeLazyLoading() {
+            var audioElements = document.querySelectorAll('audio[data-src]');
+            
+            // Create an IntersectionObserver instance
+            var observer = new IntersectionObserver(function(entries, observer) {
+                entries.forEach(function(entry) {
+                    // If the element is in the viewport, load the audio
+                    if (entry.isIntersecting) {
+                        var audio = entry.target;
+                        audio.src = audio.getAttribute('data-src'); // Set the real src
+                        audio.removeAttribute('data-src'); // Remove data-src attribute
+                        observer.unobserve(audio); // Stop observing once it's loaded
+                    }
+                });
+            });
+            
+            // Observe each audio element
+            audioElements.forEach(function(audio) {
+                observer.observe(audio);
+            });
+        }
+        
+        function initializeCopyButtons() {
+            var copyButtons = document.querySelectorAll('.copy-link');
+            copyButtons.forEach(function(button) {
+                button.addEventListener('click', function() {
+                    var source = this.getAttribute('data-src');
+                    copyToClipboard(source);
+                    alert('Link copied to clipboard!');
+                });
+            });
+        }
+        
+        // Initialize on page load
+        document.addEventListener("DOMContentLoaded", function() {
+            initializeLazyLoading();
+            initializeCopyButtons();
+        });
     </script>
 
 </body>
