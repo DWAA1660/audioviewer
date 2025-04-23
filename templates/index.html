@@ -303,16 +303,45 @@
                     // Update file list
                     const fileList = document.getElementById('fileList');
                     fileList.innerHTML = '';
+                    console.log('Files to render:', data.files);
+                    
+                    // Process each file
                     data.files.forEach(file => {
+                        console.log('Processing file:', file);
                         const fileName = file.substring(file.lastIndexOf('/') + 1).replace(/_/g, ' ');
-                        fileList.innerHTML += `
-                            <li class="audio-file">
-                                <h3>${fileName}</h3>
-                                <audio data-src="/file/?file=${encodeURIComponent(file)}" controls></audio>
-                                <a href="/file/?file=${encodeURIComponent(file)}" download class="download">Download</a>
-                                <button class="copy-link" data-src="https://audio.kofg.org/file/?file=${encodeURIComponent(file)}">Copy Link</button>
-                            </li>
-                        `;
+                        
+                        // Create the list item element
+                        const listItem = document.createElement('li');
+                        listItem.className = 'audio-file';
+                        
+                        // Add the title
+                        const title = document.createElement('h3');
+                        title.textContent = fileName;
+                        listItem.appendChild(title);
+                        
+                        // Add the audio element
+                        const audio = document.createElement('audio');
+                        audio.controls = true;
+                        audio.setAttribute('data-src', `/file/?file=${encodeURIComponent(file)}`);
+                        listItem.appendChild(audio);
+                        
+                        // Add the download link
+                        const downloadLink = document.createElement('a');
+                        downloadLink.href = `/file/?file=${encodeURIComponent(file)}`;
+                        downloadLink.className = 'download';
+                        downloadLink.setAttribute('download', '');
+                        downloadLink.textContent = 'Download';
+                        listItem.appendChild(downloadLink);
+                        
+                        // Add the copy link button
+                        const copyButton = document.createElement('button');
+                        copyButton.className = 'copy-link';
+                        copyButton.setAttribute('data-src', `https://audio.kofg.org/file/?file=${encodeURIComponent(file)}`);
+                        copyButton.textContent = 'Copy Link';
+                        listItem.appendChild(copyButton);
+                        
+                        // Add the list item to the file list
+                        fileList.appendChild(listItem);
                     });
                     
                     // Re-initialize lazy loading for new audio elements
@@ -342,6 +371,7 @@
         
         function initializeLazyLoading() {
             var audioElements = document.querySelectorAll('audio[data-src]');
+            console.log('Found ' + audioElements.length + ' audio elements to lazy load');
             
             // Create an IntersectionObserver instance
             var observer = new IntersectionObserver(function(entries, observer) {
@@ -349,9 +379,15 @@
                     // If the element is in the viewport, load the audio
                     if (entry.isIntersecting) {
                         var audio = entry.target;
-                        audio.src = audio.getAttribute('data-src'); // Set the real src
-                        audio.removeAttribute('data-src'); // Remove data-src attribute
-                        observer.unobserve(audio); // Stop observing once it's loaded
+                        var src = audio.getAttribute('data-src');
+                        console.log('Loading audio source:', src);
+                        if (src && src !== 'null' && src !== 'undefined') {
+                            audio.src = src; // Set the real src
+                            audio.removeAttribute('data-src'); // Remove data-src attribute
+                            observer.unobserve(audio); // Stop observing once it's loaded
+                        } else {
+                            console.error('Invalid audio source:', src);
+                        }
                     }
                 });
             });
@@ -375,6 +411,14 @@
         
         // Initialize on page load
         document.addEventListener("DOMContentLoaded", function() {
+            console.log('DOM loaded, initializing components');
+            initializeLazyLoading();
+            initializeCopyButtons();
+        });
+        
+        // Also initialize when the page is fully loaded (including all resources)
+        window.addEventListener('load', function() {
+            console.log('Window fully loaded, reinitializing components');
             initializeLazyLoading();
             initializeCopyButtons();
         });
