@@ -4,6 +4,7 @@ import requests
 from config import DIRECTORY, URL
 # Define the directory to monitor
 from dotenv import load_dotenv
+from security import safe_requests
 
 load_dotenv()
 KEY = os.getenv("KEY_UPLOAD")
@@ -27,7 +28,7 @@ def check_and_upload_files():
             # Check if file is already uploaded
             full_name = os.path.join(root, file)[prefix_length:]
             size = os.stat(f"{DIRECTORY}/{full_name}")
-            response = requests.get(f"{URL}/checkfile/?name={full_name}&size={size.st_size}")
+            response = safe_requests.get(f"{URL}/checkfile/?name={full_name}&size={size.st_size}")
             if response.status_code == 202:
                 print(f"File '{file}' not uploaded. Uploading now...")
                 upload_file(full_name, file)
