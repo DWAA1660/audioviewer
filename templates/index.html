@@ -175,6 +175,9 @@
         let currentPage = {{ current_page }};
         const totalPages = {{ total_pages }};
         
+        // Cache for directory contents
+        const directoryCache = {};
+        
         // Search functionality
         document.getElementById("searchInput").addEventListener("input", function() {
             var input, filter, folderList, fileList, folderItems, fileItems, h3, a, i, txtValue;
@@ -211,38 +214,17 @@
             }
         });
 
-        // Lazy loading for audio elements
-        document.addEventListener("DOMContentLoaded", function() {
-            var audioElements = document.querySelectorAll('audio[data-src]');
-
-            // Create an IntersectionObserver instance
-            var observer = new IntersectionObserver(function(entries, observer) {
-                entries.forEach(function(entry) {
-                    // If the element is in the viewport, load the audio
-                    if (entry.isIntersecting) {
-                        var audio = entry.target;
-                        audio.src = audio.getAttribute('data-src'); // Set the real src
-                        audio.removeAttribute('data-src'); // Remove data-src attribute
-                        observer.unobserve(audio); // Stop observing once it's loaded
-                    }
+        // Copy link functionality
+        function initializeCopyButtons() {
+            var copyButtons = document.querySelectorAll('.copy-link');
+            copyButtons.forEach(function(button) {
+                button.addEventListener('click', function() {
+                    var source = this.getAttribute('data-src');
+                    copyToClipboard(source);
+                    alert('Link copied to clipboard!');
                 });
             });
-
-            // Observe each audio element
-            audioElements.forEach(function(audio) {
-                observer.observe(audio);
-            });
-        });
-
-        // Copy link functionality
-        var copyButtons = document.querySelectorAll('.copy-link');
-        copyButtons.forEach(function(button) {
-            button.addEventListener('click', function() {
-                var source = this.getAttribute('data-src');
-                copyToClipboard(source);
-                alert('Link copied to clipboard!');
-            });
-        });
+        }
 
         function copyToClipboard(text) {
             var tempInput = document.createElement('input');
@@ -266,88 +248,101 @@
             }
         });
         
-        function navigateToPage(page) {
-            // Show loading indicator
-            document.getElementById('loading').style.display = 'block';
+        function updatePageContent(data) {
+            if (data.error) {
+                alert('Error: ' + data.error);
+                return;
+            }
             
-            // Disable pagination buttons during loading
-            document.getElementById('prev-page').disabled = true;
-            document.getElementById('next-page').disabled = true;
+            // Update page information
+            currentPage = data.current_page;
+            document.getElementById('current-page').textContent = currentPage;
+            document.getElementById('total-pages').textContent = data.total_pages;
             
-            // Use AJAX to fetch the next page of content
-            fetch(`/api/directory_contents?path=${encodeURIComponent(currentPath)}&page=${page}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        alert('Error: ' + data.error);
-                        return;
-                    }
+            // Update folder list
+            const folderList = document.getElementById('folder');
+            folderList.innerHTML = '';
+            
+            // Create document fragment for better performance
+            const folderFragment = document.createDocumentFragment();
+            
+            // Process folders
+            data.folders.forEach(folder => {
+                const folderName = folder.substring(folder.lastIndexOf('/') + 1);
+                const li = document.createElement('li');
+                li.className = 'folder-item';
+                
+                const a = document.createElement('a');
+                a.href = `/path?path=${encodeURIComponent(folder)}`;
+                a.textContent = `📁 ${folderName}`;
+                
+                li.appendChild(a);
+                folderFragment.appendChild(li);
+            });
+            
+            // Add all folders at once
+            folderList.appendChild(folderFragment);
+            
+            // Update file list
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = '';
+            
+            // Create document fragment for better performance
+            const fileFragment = document.createDocumentFragment();
+            
+            // Process files in batches for better performance
+            const batchSize = 10;
+            const totalFiles = data.files.length;
+            
+            function processBatch(startIndex) {
+                const endIndex = Math.min(startIndex + batchSize, totalFiles);
+                
+                for (let i = startIndex; i < endIndex; i++) {
+                    const file = data.files[i];
+                    const fileName = file.substring(file.lastIndexOf('/') + 1).replace(/_/g, ' ');
                     
-                    // Update page information
-                    currentPage = data.current_page;
-                    document.getElementById('current-page').textContent = currentPage;
-                    document.getElementById('total-pages').textContent = data.total_pages;
+                    // Create the list item element
+                    const listItem = document.createElement('li');
+                    listItem.className = 'audio-file';
                     
-                    // Update folder list
-                    const folderList = document.getElementById('folder');
-                    folderList.innerHTML = '';
-                    data.folders.forEach(folder => {
-                        const folderName = folder.substring(folder.lastIndexOf('/') + 1);
-                        folderList.innerHTML += `
-                            <li class="folder-item">
-                                <a href="/path?path=${encodeURIComponent(folder)}">📁 ${folderName}</a>
-                            </li>
-                        `;
-                    });
+                    // Add the title
+                    const title = document.createElement('h3');
+                    title.textContent = fileName;
+                    listItem.appendChild(title);
                     
-                    // Update file list
-                    const fileList = document.getElementById('fileList');
-                    fileList.innerHTML = '';
-                    console.log('Files to render:', data.files);
+                    // Add the audio element
+                    const audio = document.createElement('audio');
+                    audio.controls = true;
+                    audio.src = `/file/?file=${encodeURIComponent(file)}`;
+                    listItem.appendChild(audio);
                     
-                    // Process each file
-                    data.files.forEach(file => {
-                        console.log('Processing file:', file);
-                        const fileName = file.substring(file.lastIndexOf('/') + 1).replace(/_/g, ' ');
-                        
-                        // Create the list item element
-                        const listItem = document.createElement('li');
-                        listItem.className = 'audio-file';
-                        
-                        // Add the title
-                        const title = document.createElement('h3');
-                        title.textContent = fileName;
-                        listItem.appendChild(title);
-                        
-                        // Add the audio element
-                        const audio = document.createElement('audio');
-                        audio.controls = true;
-                        audio.setAttribute('data-src', `/file/?file=${encodeURIComponent(file)}`);
-                        listItem.appendChild(audio);
-                        
-                        // Add the download link
-                        const downloadLink = document.createElement('a');
-                        downloadLink.href = `/file/?file=${encodeURIComponent(file)}`;
-                        downloadLink.className = 'download';
-                        downloadLink.setAttribute('download', '');
-                        downloadLink.textContent = 'Download';
-                        listItem.appendChild(downloadLink);
-                        
-                        // Add the copy link button
-                        const copyButton = document.createElement('button');
-                        copyButton.className = 'copy-link';
-                        copyButton.setAttribute('data-src', `https://audio.kofg.org/file/?file=${encodeURIComponent(file)}`);
-                        copyButton.textContent = 'Copy Link';
-                        listItem.appendChild(copyButton);
-                        
-                        // Add the list item to the file list
-                        fileList.appendChild(listItem);
-                    });
+                    // Add the download link
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = `/file/?file=${encodeURIComponent(file)}`;
+                    downloadLink.className = 'download';
+                    downloadLink.setAttribute('download', '');
+                    downloadLink.textContent = 'Download';
+                    listItem.appendChild(downloadLink);
                     
-                    // Re-initialize lazy loading for new audio elements
-                    initializeLazyLoading();
+                    // Add the copy link button
+                    const copyButton = document.createElement('button');
+                    copyButton.className = 'copy-link';
+                    copyButton.setAttribute('data-src', `https://audio.kofg.org/file/?file=${encodeURIComponent(file)}`);
+                    copyButton.textContent = 'Copy Link';
+                    listItem.appendChild(copyButton);
                     
-                    // Re-initialize copy buttons
+                    // Add the list item to the fragment
+                    fileFragment.appendChild(listItem);
+                }
+                
+                // If there are more files to process, schedule the next batch
+                if (endIndex < totalFiles) {
+                    setTimeout(() => processBatch(endIndex), 0);
+                } else {
+                    // All batches processed, add the fragment to the DOM
+                    fileList.appendChild(fileFragment);
+                    
+                    // Initialize copy buttons
                     initializeCopyButtons();
                     
                     // Update pagination buttons
@@ -359,6 +354,41 @@
                     
                     // Scroll to top of content
                     window.scrollTo(0, document.getElementById('content-container').offsetTop);
+                }
+            }
+            
+            // Start processing the first batch
+            processBatch(0);
+        }
+        
+        function navigateToPage(page) {
+            // Show loading indicator
+            document.getElementById('loading').style.display = 'block';
+            
+            // Disable pagination buttons during loading
+            document.getElementById('prev-page').disabled = true;
+            document.getElementById('next-page').disabled = true;
+            
+            // Check if we have cached data for this path and page
+            const cacheKey = `${currentPath}_${page}`;
+            if (directoryCache[cacheKey]) {
+                console.log('Using cached data for', cacheKey);
+                updatePageContent(directoryCache[cacheKey]);
+                return;
+            }
+            
+            // Use AJAX to fetch the next page of content
+            console.time('fetchTime');
+            fetch(`/api/directory_contents?path=${encodeURIComponent(currentPath)}&page=${page}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.timeEnd('fetchTime');
+                    
+                    // Cache the results
+                    directoryCache[cacheKey] = data;
+                    
+                    // Update the page content
+                    updatePageContent(data);
                 })
                 .catch(error => {
                     console.error('Error fetching page data:', error);
@@ -369,57 +399,15 @@
                 });
         }
         
-        function initializeLazyLoading() {
-            var audioElements = document.querySelectorAll('audio[data-src]');
-            console.log('Found ' + audioElements.length + ' audio elements to lazy load');
-            
-            // Create an IntersectionObserver instance
-            var observer = new IntersectionObserver(function(entries, observer) {
-                entries.forEach(function(entry) {
-                    // If the element is in the viewport, load the audio
-                    if (entry.isIntersecting) {
-                        var audio = entry.target;
-                        var src = audio.getAttribute('data-src');
-                        console.log('Loading audio source:', src);
-                        if (src && src !== 'null' && src !== 'undefined') {
-                            audio.src = src; // Set the real src
-                            audio.removeAttribute('data-src'); // Remove data-src attribute
-                            observer.unobserve(audio); // Stop observing once it's loaded
-                        } else {
-                            console.error('Invalid audio source:', src);
-                        }
-                    }
-                });
-            });
-            
-            // Observe each audio element
-            audioElements.forEach(function(audio) {
-                observer.observe(audio);
-            });
-        }
-        
-        function initializeCopyButtons() {
-            var copyButtons = document.querySelectorAll('.copy-link');
-            copyButtons.forEach(function(button) {
-                button.addEventListener('click', function() {
-                    var source = this.getAttribute('data-src');
-                    copyToClipboard(source);
-                    alert('Link copied to clipboard!');
-                });
-            });
-        }
-        
         // Initialize on page load
         document.addEventListener("DOMContentLoaded", function() {
             console.log('DOM loaded, initializing components');
-            initializeLazyLoading();
             initializeCopyButtons();
         });
         
         // Also initialize when the page is fully loaded (including all resources)
         window.addEventListener('load', function() {
             console.log('Window fully loaded, reinitializing components');
-            initializeLazyLoading();
             initializeCopyButtons();
         });
     </script>
