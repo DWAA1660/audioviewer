@@ -123,11 +123,39 @@
             font-size: 1.2rem;
             color: #666;
         }
+        
+        .search-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .search-container input[type="text"] {
+            flex: 1;
+            margin-bottom: 0;
+        }
+        
+        .search-btn {
+            background-color: #2a75c0;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        
+        .search-btn:hover {
+            background-color: #1f5a93;
+        }
     </style>
 </head>
 <body>
 
-    <input type="text" id="searchInput" placeholder="Search for folders or audio files">
+    <div class="search-container">
+        <input type="text" id="searchInput" placeholder="Search for folders or audio files across all directories">
+        <button id="searchButton" class="search-btn"><i class="fas fa-search"></i> Search</button>
+    </div>
 
     <div id="content-container">
         <ul id="folder">
@@ -172,48 +200,125 @@
     <script>
         // Global variables
         const currentPath = "{{ path }}";
-        let currentPage = {{ current_page }};
-        const totalPages = {{ total_pages }};
+        let currentPage = parseInt("{{ current_page }}", 10);
+        let totalPages = parseInt("{{ total_pages }}", 10);
         
         // Cache for directory contents
         const directoryCache = {};
         
+        // Track if we're in search mode
+        let isSearchMode = false;
+        let currentSearchQuery = '';
+        
         // Search functionality
+        // Local search (filter displayed items)
         document.getElementById("searchInput").addEventListener("input", function() {
-            var input, filter, folderList, fileList, folderItems, fileItems, h3, a, i, txtValue;
+            // Only perform local filtering if we're not in search mode
+            if (!isSearchMode) {
+                var input, filter, folderList, fileList, folderItems, fileItems, h3, a, i, txtValue;
 
-            input = document.getElementById("searchInput");
-            filter = input.value.toUpperCase();
+                input = document.getElementById("searchInput");
+                filter = input.value.toUpperCase();
+                folderList = document.getElementById("folder");
+                fileList = document.getElementById("fileList");
+                folderItems = folderList.getElementsByTagName("li");
+                fileItems = fileList.getElementsByTagName("li");
 
-            // Search in folders
-            folderList = document.getElementById("folder");
-            folderItems = folderList.getElementsByClassName("folder-item");
-
-            for (i = 0; i < folderItems.length; i++) {
-                a = folderItems[i].getElementsByTagName("a")[0];
-                txtValue = a.textContent || a.innerText;
-                if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                    folderItems[i].style.display = "";
-                } else {
-                    folderItems[i].style.display = "none";
+                // Filter folders
+                for (i = 0; i < folderItems.length; i++) {
+                    a = folderItems[i].getElementsByTagName("a")[0];
+                    txtValue = a.textContent || a.innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        folderItems[i].style.display = "";
+                    } else {
+                        folderItems[i].style.display = "none";
+                    }
                 }
-            }
 
-            // Search in audio files
-            fileList = document.getElementById("fileList");
-            fileItems = fileList.getElementsByClassName("audio-file");
-
-            for (i = 0; i < fileItems.length; i++) {
-                h3 = fileItems[i].getElementsByTagName("h3")[0];
-                txtValue = h3.textContent || h3.innerText;
-                if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                    fileItems[i].style.display = "";
-                } else {
-                    fileItems[i].style.display = "none";
+                // Filter files
+                for (i = 0; i < fileItems.length; i++) {
+                    h3 = fileItems[i].getElementsByTagName("h3")[0];
+                    txtValue = h3.textContent || h3.innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        fileItems[i].style.display = "";
+                    } else {
+                        fileItems[i].style.display = "none";
+                    }
                 }
             }
         });
-
+        
+        // Global search (search across all directories)
+        document.getElementById("searchButton").addEventListener("click", function() {
+            performGlobalSearch();
+        });
+        
+        // Also trigger search on Enter key
+        document.getElementById("searchInput").addEventListener("keyup", function(event) {
+            if (event.key === "Enter") {
+                performGlobalSearch();
+            }
+        });
+        
+        function performGlobalSearch() {
+            const query = document.getElementById("searchInput").value.trim();
+            if (query === '' && isSearchMode) {
+                // If search is empty and we're in search mode, go back to normal browsing
+                isSearchMode = false;
+                currentSearchQuery = '';
+                navigateToPage(1);
+                return;
+            }
+            
+            if (query === '' && !isSearchMode) {
+                // Empty search in normal mode, do nothing
+                return;
+            }
+            
+            // Set search mode and perform search
+            isSearchMode = true;
+            currentSearchQuery = query;
+            searchFiles(query, 1);
+        }
+        
+        function searchFiles(query, page) {
+            // Show loading indicator
+            document.getElementById('loading').style.display = 'block';
+            
+            // Disable pagination buttons during loading
+            document.getElementById('prev-page').disabled = true;
+            document.getElementById('next-page').disabled = true;
+            
+            // Check if we have cached data for this search query and page
+            const cacheKey = `search_${query}_${page}`;
+            if (directoryCache[cacheKey]) {
+                console.log('Using cached search results for', cacheKey);
+                updatePageContent(directoryCache[cacheKey]);
+                return;
+            }
+            
+            // Use AJAX to fetch search results
+            fetch(`/api/search?path=${encodeURIComponent(currentPath)}&query=${encodeURIComponent(query)}&page=${page}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Cache the results
+                    directoryCache[cacheKey] = data;
+                    
+                    // Update the page content
+                    updatePageContent(data);
+                    
+                    // Update current page
+                    currentPage = data.current_page;
+                })
+                .catch(error => {
+                    console.error('Error fetching search results:', error);
+                    alert('Failed to load search results. Please try again.');
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('prev-page').disabled = currentPage <= 1;
+                    document.getElementById('next-page').disabled = currentPage >= totalPages;
+                });
+        }
+        
         // Copy link functionality
         function initializeCopyButtons() {
             var copyButtons = document.querySelectorAll('.copy-link');
@@ -368,6 +473,12 @@
             // Disable pagination buttons during loading
             document.getElementById('prev-page').disabled = true;
             document.getElementById('next-page').disabled = true;
+            
+            if (isSearchMode) {
+                // If in search mode, use the search API
+                searchFiles(currentSearchQuery, page);
+                return;
+            }
             
             // Check if we have cached data for this path and page
             const cacheKey = `${currentPath}_${page}`;

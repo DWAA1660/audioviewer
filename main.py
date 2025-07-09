@@ -140,6 +140,35 @@ def upload_file():
 
 
 
+def search_files_recursive(root_dir, query=None):
+    """Recursively search for files and folders in a directory
+    
+    Args:
+        root_dir (str): The root directory to start searching from
+        query (str, optional): Search query to filter results. Defaults to None.
+        
+    Returns:
+        tuple: (files, folders) - Lists of file and folder paths that match the query
+    """
+    files = []
+    folders = []
+    
+    # Walk through all directories recursively
+    for dirpath, dirnames, filenames in os.walk(root_dir):
+        # Check if folders match the query
+        for dirname in dirnames:
+            full_path = os.path.join(dirpath, dirname)
+            if query is None or query.lower() in dirname.lower():
+                folders.append(full_path)
+        
+        # Check if files match the query
+        for filename in filenames:
+            full_path = os.path.join(dirpath, filename)
+            if query is None or query.lower() in filename.lower():
+                files.append(full_path)
+    
+    return files, folders
+
 @app.route('/api/directory_contents')
 def get_directory_contents():
     """API endpoint to get directory contents with pagination"""
@@ -175,6 +204,44 @@ def get_directory_contents():
             'current_page': page,
             'total_pages': total_pages,
             'total_items': total_items
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/search')
+def search_files():
+    """API endpoint to search for files and folders recursively"""
+    path = request.args.get('path', 'static/sources')
+    query = request.args.get('query', '')
+    page = request.args.get('page', 1, type=int)
+    
+    try:
+        # Search for files and folders recursively
+        files, folders = search_files_recursive(path, query if query else None)
+        
+        # Total items and pagination
+        total_items = len(files) + len(folders)
+        total_pages = math.ceil(total_items / ITEMS_PER_PAGE) if total_items > 0 else 1
+        
+        # Calculate pagination indices
+        start_idx = (page - 1) * ITEMS_PER_PAGE
+        end_idx = min(start_idx + ITEMS_PER_PAGE, total_items)
+        
+        # Combine and sort results for pagination
+        all_items = sorted(folders + files)
+        paginated_items = all_items[start_idx:end_idx]
+        
+        # Separate back into files and folders for the frontend
+        paginated_files = [item for item in paginated_items if os.path.isfile(item)]
+        paginated_folders = [item for item in paginated_items if os.path.isdir(item)]
+        
+        return jsonify({
+            'files': paginated_files,
+            'folders': paginated_folders,
+            'current_page': page,
+            'total_pages': total_pages,
+            'total_items': total_items,
+            'query': query
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
