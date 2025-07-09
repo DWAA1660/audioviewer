@@ -189,13 +189,22 @@ def search_files_recursive(root_dir, query=None):
             # Check individual folders
             for dirname in dirnames:
                 full_path = os.path.join(dirpath, dirname)
-                if query in dirname.lower() or query in os.path.relpath(full_path, root_dir).lower():
+                rel_path = os.path.relpath(full_path, root_dir).lower()
+                if query in dirname.lower() or query in rel_path:
                     folders.append(full_path)
             
-            # Check individual files
+            # Check individual files - improved matching
             for filename in filenames:
                 full_path = os.path.join(dirpath, filename)
-                if query in filename.lower() or query in os.path.relpath(full_path, root_dir).lower():
+                rel_path = os.path.relpath(full_path, root_dir).lower()
+                
+                # Check if query matches filename directly
+                if query == filename.lower():
+                    files.append(full_path)
+                    continue
+                    
+                # Check if query is in filename or relative path
+                if query in filename.lower() or query in rel_path:
                     files.append(full_path)
     
     # Remove duplicates while preserving order
