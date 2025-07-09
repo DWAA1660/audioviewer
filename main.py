@@ -153,21 +153,64 @@ def search_files_recursive(root_dir, query=None):
     files = []
     folders = []
     
-    # Walk through all directories recursively
-    for dirpath, dirnames, filenames in os.walk(root_dir):
-        # Check if folders match the query
-        for dirname in dirnames:
-            full_path = os.path.join(dirpath, dirname)
-            if query is None or query.lower() in dirname.lower():
+    # If no query is provided, just return all files and folders
+    if query is None or query.strip() == '':
+        # Walk through all directories recursively
+        for dirpath, dirnames, filenames in os.walk(root_dir):
+            # Add all folders
+            for dirname in dirnames:
+                full_path = os.path.join(dirpath, dirname)
                 folders.append(full_path)
-        
-        # Check if files match the query
-        for filename in filenames:
-            full_path = os.path.join(dirpath, filename)
-            if query is None or query.lower() in filename.lower():
+            
+            # Add all files
+            for filename in filenames:
+                full_path = os.path.join(dirpath, filename)
                 files.append(full_path)
+    else:
+        # Search with query
+        query = query.lower()
+        # Walk through all directories recursively
+        for dirpath, dirnames, filenames in os.walk(root_dir):
+            # Check if the directory path itself matches the query
+            relative_dirpath = os.path.relpath(dirpath, root_dir)
+            if query in relative_dirpath.lower():
+                # If the directory path matches, add it and all its contents
+                folders.append(dirpath)
+                # Add all subdirectories
+                for dirname in dirnames:
+                    full_path = os.path.join(dirpath, dirname)
+                    folders.append(full_path)
+                # Add all files in this directory
+                for filename in filenames:
+                    full_path = os.path.join(dirpath, filename)
+                    files.append(full_path)
+                continue
+            
+            # Check individual folders
+            for dirname in dirnames:
+                full_path = os.path.join(dirpath, dirname)
+                if query in dirname.lower() or query in os.path.relpath(full_path, root_dir).lower():
+                    folders.append(full_path)
+            
+            # Check individual files
+            for filename in filenames:
+                full_path = os.path.join(dirpath, filename)
+                if query in filename.lower() or query in os.path.relpath(full_path, root_dir).lower():
+                    files.append(full_path)
     
-    return files, folders
+    # Remove duplicates while preserving order
+    unique_files = []
+    unique_folders = []
+    
+    for file_path in files:
+        if file_path not in unique_files:
+            unique_files.append(file_path)
+    
+    for folder_path in folders:
+        if folder_path not in unique_folders:
+            unique_folders.append(folder_path)
+    
+    return unique_files, unique_folders
 
 @app.route('/api/directory_contents')
 def get_directory_contents():

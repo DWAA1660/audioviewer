@@ -148,6 +148,15 @@
         .search-btn:hover {
             background-color: #1f5a93;
         }
+        
+        .search-info {
+            background-color: #f0f7ff;
+            border-left: 4px solid #2a75c0;
+            padding: 10px 15px;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+            color: #333;
+        }
     </style>
 </head>
 <body>
@@ -156,6 +165,8 @@
         <input type="text" id="searchInput" placeholder="Search for folders or audio files across all directories">
         <button id="searchButton" class="search-btn"><i class="fas fa-search"></i> Search</button>
     </div>
+    
+    <div id="search-info" class="search-info" style="display: none;"></div>
 
     <div id="content-container">
         <ul id="folder">
@@ -353,72 +364,105 @@
             }
         });
         
+        // Also trigger search on Enter key
+        document.getElementById("searchInput").addEventListener("keyup", function(event) {
+            if (event.key === "Enter") {
+                performGlobalSearch();
+            }
+        });
+        
         function updatePageContent(data) {
-            if (data.error) {
-                alert('Error: ' + data.error);
-                return;
+            // Update current page and total pages
+            currentPage = data.current_page;
+            totalPages = data.total_pages;
+            
+            // Update page info
+            document.querySelector('.page-info').innerHTML = `Page ${currentPage} of ${totalPages} (${data.total_items} items)`;
+            
+            // Show search query if in search mode
+            const searchInfo = document.getElementById('search-info');
+            if (isSearchMode && data.query) {
+                searchInfo.textContent = `Search results for: "${data.query}"`;
+                searchInfo.style.display = 'block';
+            } else {
+                searchInfo.style.display = 'none';
             }
             
-            // Update page information
-            currentPage = data.current_page;
-            document.getElementById('current-page').textContent = currentPage;
-            document.getElementById('total-pages').textContent = data.total_pages;
-            
-            // Update folder list
+            // Clear existing content
             const folderList = document.getElementById('folder');
-            folderList.innerHTML = '';
-            
-            // Create document fragment for better performance
-            const folderFragment = document.createDocumentFragment();
-            
-            // Process folders
-            data.folders.forEach(folder => {
-                const folderName = folder.substring(folder.lastIndexOf('/') + 1);
-                const li = document.createElement('li');
-                li.className = 'folder-item';
-                
-                const a = document.createElement('a');
-                a.href = `/path?path=${encodeURIComponent(folder)}`;
-                a.textContent = `📁 ${folderName}`;
-                
-                li.appendChild(a);
-                folderFragment.appendChild(li);
-            });
-            
-            // Add all folders at once
-            folderList.appendChild(folderFragment);
-            
-            // Update file list
             const fileList = document.getElementById('fileList');
+            folderList.innerHTML = '';
             fileList.innerHTML = '';
             
-            // Create document fragment for better performance
+            // Create document fragments for better performance
+            const folderFragment = document.createDocumentFragment();
             const fileFragment = document.createDocumentFragment();
+            
+            // Add folders to the fragment
+            data.folders.forEach(folder => {
+                const listItem = document.createElement('li');
+                listItem.className = 'folder-item';
+                
+                const link = document.createElement('a');
+                link.href = `${window.location.pathname}?path=${encodeURIComponent(folder)}`;
+                
+                // Format the display path
+                let displayPath;
+                if (isSearchMode) {
+                    // In search mode, show the full relative path from the search root
+                    displayPath = folder.startsWith(currentPath) ? 
+                        folder.slice(currentPath.length + 1) : 
+                        folder;
+                    link.innerHTML = `📁 ${displayPath || folder}`;
+                } else {
+                    // In normal mode, just show the folder name
+                    displayPath = folder.slice(currentPath.length + 1) || folder;
+                    link.innerHTML = `📁 ${displayPath}`;
+                }
+                
+                listItem.appendChild(link);
+                folderFragment.appendChild(listItem);
+            });
+            
+            // Add the folder fragment to the DOM
+            folderList.appendChild(folderFragment);
             
             // Process files in batches for better performance
             const batchSize = 10;
             const totalFiles = data.files.length;
             
+            processBatch(0);
+            
             function processBatch(startIndex) {
                 const endIndex = Math.min(startIndex + batchSize, totalFiles);
                 
+                // Process this batch of files
                 for (let i = startIndex; i < endIndex; i++) {
                     const file = data.files[i];
-                    const fileName = file.substring(file.lastIndexOf('/') + 1).replace(/_/g, ' ');
-                    
-                    // Create the list item element
                     const listItem = document.createElement('li');
                     listItem.className = 'audio-file';
                     
-                    // Add the title
-                    const title = document.createElement('h3');
-                    title.textContent = fileName;
-                    listItem.appendChild(title);
+                    // Create the file name heading with path info if in search mode
+                    const heading = document.createElement('h3');
+                    let displayName;
                     
-                    // Add the audio element
+                    if (isSearchMode) {
+                        // In search mode, show the full relative path
+                        displayName = file.startsWith(currentPath) ? 
+                            file.slice(currentPath.length + 1) : 
+                            file;
+                    } else {
+                        // In normal mode, just show the file name
+                        displayName = file.slice(currentPath.length + 1);
+                    }
+                    
+                    heading.textContent = displayName.replace(/_/g, ' ') || file;
+                    listItem.appendChild(heading);
+                    
+                    // Create the audio player
                     const audio = document.createElement('audio');
-                    audio.controls = true;
                     audio.src = `/file/?file=${encodeURIComponent(file)}`;
+                    audio.controls = true;
                     listItem.appendChild(audio);
                     
                     // Add the download link
@@ -452,7 +496,7 @@
                     
                     // Update pagination buttons
                     document.getElementById('prev-page').disabled = currentPage <= 1;
-                    document.getElementById('next-page').disabled = currentPage >= data.total_pages;
+                    document.getElementById('next-page').disabled = currentPage >= totalPages;
                     
                     // Hide loading indicator
                     document.getElementById('loading').style.display = 'none';
@@ -461,9 +505,6 @@
                     window.scrollTo(0, document.getElementById('content-container').offsetTop);
                 }
             }
-            
-            // Start processing the first batch
-            processBatch(0);
         }
         
         function navigateToPage(page) {
